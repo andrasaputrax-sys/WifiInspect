@@ -3,6 +3,7 @@ name: Build WifiInspect APK
 on:
   push:
     paths:
+      - 'WifiInspect-V2-ready.zip'
       - 'WifiInspect-ready.zip'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
@@ -14,18 +15,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find and extract project ZIP
+      - name: Find and extract project ZIP (prefer V2)
         run: |
-          ZIP_FILE=$(find . -maxdepth 2 -type f -iname 'WifiInspect-ready.zip' | head -n 1)
+          ZIP_FILE=''
+          if [ -f 'WifiInspect-V2-ready.zip' ]; then
+            ZIP_FILE='WifiInspect-V2-ready.zip'
+          elif [ -f 'WifiInspect-ready.zip' ]; then
+            ZIP_FILE='WifiInspect-ready.zip'
+          else
+            ZIP_FILE=$(find . -maxdepth 3 -type f -iname 'WifiInspect-V2-ready.zip' -o -iname 'WifiInspect-ready.zip' | head -n 1)
+          fi
           if [ -z "$ZIP_FILE" ]; then
-            echo "WifiInspect-ready.zip not found in repository"
+            echo 'No WifiInspect ZIP found in repository.'
             exit 1
           fi
+          echo "Using ZIP: $ZIP_FILE"
           mkdir -p project
           unzip -q "$ZIP_FILE" -d project
           ROOT=$(find project -type f -name 'settings.gradle.kts' -printf '%h\n' | head -n 1)
           if [ -z "$ROOT" ]; then
-            echo "settings.gradle.kts not found after extraction"
+            echo 'settings.gradle.kts not found after extraction.'
             exit 1
           fi
           echo "PROJECT_ROOT=$ROOT" >> "$GITHUB_ENV"
